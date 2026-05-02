@@ -738,7 +738,7 @@ function renderSpells() {
         let levelDisplay = s.level === 0 ? "Заговор" : `ЯЗ ${s.level}`;
         let li = document.createElement('li');
         li.className = 'spell-item';
-        li.innerHTML = `<div><strong>✨ ${s.name} (${levelDisplay})</strong> <span style="font-size:0.7rem;">${s.attr.toUpperCase()}</span> <button class="spell-cast-btn dice" data-idx="${idx}">🎲</button> <button class="spell-desc-btn remove-btn" style="background:#3a6b3a;">📖 Описание</button> <button class="remove-spell remove-btn" data-idx="${idx}">🗑</button></div>`;
+        li.innerHTML = `<div><strong>✨ ${s.name} (${levelDisplay})</strong> <span style="font-size:0.7rem;">${s.attr.toUpperCase()}</span> <button class="spell-cast-btn dice" data-idx="${idx}">🎲</button> <button class="spell-desc-btn remove-btn" data-idx="${idx}" style="background:#3a6b3a;">📖 Описание</button> <button class="remove-spell remove-btn" data-idx="${idx}">🗑</button></div>`;
         container.appendChild(li);
     });
     
@@ -749,18 +749,34 @@ function renderSpells() {
             if (state.spells[idx]) await castSpell(state.spells[idx]);
         };
     });
+    
+    // === ИСПРАВЛЕННЫЙ БЛОК ===
     document.querySelectorAll('.spell-desc-btn').forEach(btn => {
-    btn.onclick = (e) => {
-        e.stopPropagation();
-        let idx = parseInt(btn.dataset.idx);
-        let s = state.spells[idx];
-        if (s) {
-            // Используем кастомное модальное окно вместо alert
-            showSpellDescriptionModal(s);
-        }
-    };
-    function showSpellDescriptionModal(spell) {
-    // Создаём overlay, если его нет
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            let idx = parseInt(btn.dataset.idx);
+            let s = state.spells[idx];
+            if (s) {
+                showSpellDescriptionModal(s);
+            }
+        };
+    });
+    // === КОНЕЦ ИСПРАВЛЕННОГО БЛОКА ===
+    
+    document.querySelectorAll('.remove-spell').forEach(btn => {
+        btn.onclick = () => {
+            let idx = parseInt(btn.dataset.idx);
+            state.spells.splice(idx, 1);
+            renderSpells();
+            autoSave();
+            addToLog(`🗑 Заклинание удалено`);
+        };
+    });
+}
+
+
+// ============ ОПИСАНИЕ ЗАКЛИНАНИЙ ============
+function showSpellDescriptionModal(spell) {
     let modal = document.getElementById('spellDescModal');
     if (!modal) {
         modal = document.createElement('div');
@@ -785,7 +801,6 @@ function renderSpells() {
         };
     }
     
-    // Заполняем данными
     document.getElementById('spellDescTitle').innerHTML = `✨ ${spell.name}`;
     document.getElementById('spellDescDetails').innerHTML = `
         <strong>Уровень:</strong> ${spell.level === 0 ? 'Заговор' : spell.level}<br>
@@ -797,17 +812,8 @@ function renderSpells() {
     
     modal.style.display = 'flex';
 }
-});
-    document.querySelectorAll('.remove-spell').forEach(btn => {
-        btn.onclick = () => {
-            let idx = parseInt(btn.dataset.idx);
-            state.spells.splice(idx, 1);
-            renderSpells();
-            autoSave();
-            addToLog(`🗑 Заклинание удалено`);
-        };
-    });
-}
+
+
 
 // ============ ИНВЕНТАРЬ ============
 function renderInventory() {
@@ -1342,6 +1348,13 @@ function initEventHandlers() {
                     state.manualHpEnabled = data.manualHpEnabled || false;
                     document.getElementById('profBonus').value = state.profBonus;
                     document.getElementById('tempHp').value = state.tempHp;
+                    state.charName = data.charName || "";
+                    state.charRace = data.charRace || "";
+// Добавить синхронизацию с полями ввода
+                    const charNameInput = document.getElementById('charName');
+                    const charRaceInput = document.getElementById('charRace');
+                    if (charNameInput) charNameInput.value = state.charName;
+                    if (charRaceInput) charRaceInput.value = state.charRace;
                     updateExhaustionEffects();
                     updateSpeedDisplay();
                     updateMaxHp();
