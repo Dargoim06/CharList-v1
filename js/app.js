@@ -729,6 +729,7 @@ async function castSpell(spell) {
     });
 }
 
+
 function renderSpells() {
     let container = document.getElementById('spellsList');
     if (!container) return;
@@ -740,6 +741,7 @@ function renderSpells() {
         li.innerHTML = `<div><strong>✨ ${s.name} (${levelDisplay})</strong> <span style="font-size:0.7rem;">${s.attr.toUpperCase()}</span> <button class="spell-cast-btn dice" data-idx="${idx}">🎲</button> <button class="spell-desc-btn remove-btn" style="background:#3a6b3a;">📖 Описание</button> <button class="remove-spell remove-btn" data-idx="${idx}">🗑</button></div>`;
         container.appendChild(li);
     });
+    
     document.querySelectorAll('.spell-cast-btn').forEach(btn => {
         btn.onclick = async (e) => {
             e.stopPropagation();
@@ -748,12 +750,54 @@ function renderSpells() {
         };
     });
     document.querySelectorAll('.spell-desc-btn').forEach(btn => {
-        btn.onclick = () => {
-            let idx = parseInt(btn.dataset.idx);
-            let s = state.spells[idx];
-            if (s) alert(`✨ ${s.name}\nУровень: ${s.level === 0 ? 'Заговор' : s.level}\nАтрибут: ${s.attr.toUpperCase()}\nВладение: ${s.proficient ? 'да' : 'нет'}\nУрон: ${s.damage || '—'}\n\n${s.desc || 'Нет описания'}`);
+    btn.onclick = (e) => {
+        e.stopPropagation();
+        let idx = parseInt(btn.dataset.idx);
+        let s = state.spells[idx];
+        if (s) {
+            // Используем кастомное модальное окно вместо alert
+            showSpellDescriptionModal(s);
+        }
+    };
+    function showSpellDescriptionModal(spell) {
+    // Создаём overlay, если его нет
+    let modal = document.getElementById('spellDescModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'spellDescModal';
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 500px;">
+                <h3 id="spellDescTitle">✨ Название</h3>
+                <div id="spellDescDetails" style="margin: 10px 0; padding: 8px; background: var(--stat-bg); border-radius: 16px;"></div>
+                <p id="spellDescText" style="white-space: pre-wrap; margin: 10px 0;"></p>
+                <button id="closeSpellDescBtn" style="margin-top: 10px;">Закрыть</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        document.getElementById('closeSpellDescBtn').onclick = () => {
+            modal.style.display = 'none';
         };
-    });
+        
+        modal.onclick = (e) => {
+            if (e.target === modal) modal.style.display = 'none';
+        };
+    }
+    
+    // Заполняем данными
+    document.getElementById('spellDescTitle').innerHTML = `✨ ${spell.name}`;
+    document.getElementById('spellDescDetails').innerHTML = `
+        <strong>Уровень:</strong> ${spell.level === 0 ? 'Заговор' : spell.level}<br>
+        <strong>Атрибут:</strong> ${spell.attr.toUpperCase()}<br>
+        <strong>Владение:</strong> ${spell.proficient ? 'да' : 'нет'}<br>
+        <strong>Урон:</strong> ${spell.damage || '—'}
+    `;
+    document.getElementById('spellDescText').innerHTML = spell.desc || 'Нет описания';
+    
+    modal.style.display = 'flex';
+}
+});
     document.querySelectorAll('.remove-spell').forEach(btn => {
         btn.onclick = () => {
             let idx = parseInt(btn.dataset.idx);
