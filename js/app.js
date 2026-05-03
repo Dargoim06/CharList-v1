@@ -83,6 +83,10 @@ if (selectedClass === 'cleric') {
     state.classResources.sorcerer.current = 1;
     state.classResources.sorcerer.max = 1;
 }
+state.manualHpEnabled = true;
+document.getElementById('manualHpCheckbox').checked = true;
+document.getElementById('maxHpInput').disabled = false;
+}
     // ============ КОНЕЦ ИНИЦИАЛИЗАЦИИ ============
 
     function getHitDiceByClass(className) {
@@ -196,8 +200,14 @@ function loadData() {
             document.getElementById('tempHp').value = state.tempHp;
             document.getElementById('charName').value = state.charName;
             document.getElementById('charRace').value = state.charRace;
-            document.getElementById('manualHpCheckbox').checked = state.manualHpEnabled;
-            document.getElementById('maxHpInput').disabled = !state.manualHpEnabled;
+            
+            // ============ ВРЕМЕННОЕ РЕШЕНИЕ: принудительно включаем ручное редактирование ХП ============
+            state.manualHpEnabled = true;
+            document.getElementById('manualHpCheckbox').checked = true;
+            document.getElementById('manualHpCheckbox').disabled = true;
+            document.getElementById('maxHpInput').disabled = false;
+            document.getElementById('maxHpInput').value = state.maxHp;
+            // =======================================================================================
             
             updateExhaustionEffects();
             updateSpeedDisplay();
@@ -211,7 +221,7 @@ function loadData() {
             renderAttacks();
             renderFeatures();
             renderNotes();
-            renderClassResource(); // Добавлен рендер классовых ресурсов
+            renderClassResource();
             updateUI();
             
             if (!state.primaryClass && state.multClasses.length > 0) {
@@ -316,6 +326,7 @@ function updateMaxHp() {
         newMaxHp = raw;
     }
 
+    // Временное решение: не меняем maxHp автоматически если ручной режим включён
     if (state.maxHp !== newMaxHp && !state.manualHpEnabled) {
         let oldMax = state.maxHp;
         state.maxHp = newMaxHp;
@@ -1119,32 +1130,32 @@ function initEventHandlers() {
     document.getElementById('sp')?.addEventListener('input', () => { state.money.sp = parseInt(document.getElementById('sp').value) || 0; autoSave(); });
     document.getElementById('cp')?.addEventListener('input', () => { state.money.cp = parseInt(document.getElementById('cp').value) || 0; autoSave(); });
 
-    const maxHpInput = document.getElementById('maxHpInput');
-    const manualHpCheckbox = document.getElementById('manualHpCheckbox');
-    manualHpCheckbox?.addEventListener('change', () => {
-        state.manualHpEnabled = manualHpCheckbox.checked;
-        if (state.manualHpEnabled) {
-            maxHpInput.disabled = false;
-            maxHpInput.value = state.maxHp;
-            addToLog(`✏️ Ручное редактирование MaxHP включено.`);
-        } else {
-            maxHpInput.disabled = true;
-            addToLog(`🔄 Ручное редактирование хитов отключено.`);
-        }
-        autoSave();
-    });
-    maxHpInput?.addEventListener('change', () => {
-        if (state.manualHpEnabled) {
-            let newMax = parseInt(maxHpInput.value);
-            if (!isNaN(newMax) && newMax > 0) {
-                state.maxHp = newMax;
-                if (state.currentHp > state.maxHp) state.currentHp = state.maxHp;
-                updateUI();
-                addToLog(`✏️ MaxHP изменён вручную: ${state.maxHp}`);
-                autoSave();
-            }
-        }
-    });
+    // const maxHpInput = document.getElementById('maxHpInput');
+    // const manualHpCheckbox = document.getElementById('manualHpCheckbox');
+    // manualHpCheckbox?.addEventListener('change', () => {
+    //     state.manualHpEnabled = manualHpCheckbox.checked;
+    //     if (state.manualHpEnabled) {
+    //         maxHpInput.disabled = false;
+    //         maxHpInput.value = state.maxHp;
+    //         addToLog(`✏️ Ручное редактирование MaxHP включено.`);
+    //     } else {
+    //         maxHpInput.disabled = true;
+    //         addToLog(`🔄 Ручное редактирование хитов отключено.`);
+    //     }
+    //     autoSave();
+    // });
+    // maxHpInput?.addEventListener('change', () => {
+    //     if (state.manualHpEnabled) {
+    //         let newMax = parseInt(maxHpInput.value);
+    //         if (!isNaN(newMax) && newMax > 0) {
+    //             state.maxHp = newMax;
+    //             if (state.currentHp > state.maxHp) state.currentHp = state.maxHp;
+    //             updateUI();
+    //             addToLog(`✏️ MaxHP изменён вручную: ${state.maxHp}`);
+    //             autoSave();
+    //         }
+    //     }
+    // });
 
     document.getElementById('addClassBtn')?.addEventListener('click', () => {
         state.multClasses.push({ className: "fighter", level: 1, hitDice: 8 });
