@@ -583,22 +583,10 @@ function renderSlots() {
     state.spellSlots.forEach((slot, idx) => {
         let div = document.createElement('div');
         div.className = 'slot-row';
-        div.innerHTML = `<strong>ЯЗ ${slot.level}</strong> <span>${slot.current}/${slot.max}</span> <button class="use-slot dice" data-idx="${idx}">⚡ использовать</button> <button class="remove-slot remove-btn" data-idx="${idx}">🗑</button>`;
+        div.innerHTML = `<strong>ЯЗ ${slot.level}</strong> <span>${slot.current}/${slot.max}</span> <button class="remove-slot remove-btn" data-idx="${idx}">🗑</button>`;
         container.appendChild(div);
     });
-    document.querySelectorAll('.use-slot').forEach(btn => {
-        btn.onclick = () => {
-            let idx = parseInt(btn.dataset.idx);
-            if (state.spellSlots[idx] && state.spellSlots[idx].current > 0) {
-                state.spellSlots[idx].current--;
-                renderSlots();
-                addToLog(`✨ Использован слот ${state.spellSlots[idx].level} уровня.`);
-                autoSave();
-            } else {
-                addToLog(`❌ Нет слотов`);
-            }
-        };
-    });
+    
     document.querySelectorAll('.remove-slot').forEach(btn => {
         btn.onclick = () => {
             let idx = parseInt(btn.dataset.idx);
@@ -607,6 +595,14 @@ function renderSlots() {
             autoSave();
         };
     });
+}
+function restoreAllSlots() {
+    state.spellSlots.forEach(slot => {
+        slot.current = slot.max;
+    });
+    renderSlots();
+    addToLog(`🔮 Все ячейки заклинаний восстановлены!`);
+    autoSave();
 }
 
 async function castSpell(spell) {
@@ -1355,6 +1351,10 @@ function initEventHandlers() {
             location.reload();
         }
     });
+    // Восстановление всех ячеек заклинаний
+    document.getElementById('restoreSlotsBtn')?.addEventListener('click', () => {
+    restoreAllSlots();
+});    
 
     document.querySelectorAll('.stat-card .card-header').forEach(header => {
         header.addEventListener('click', (e) => {
