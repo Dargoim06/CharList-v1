@@ -185,10 +185,13 @@ function loadData() {
     }
 }
 
-function addToLog(msg) {
+function addToLog(msg, style) {
     const log = document.getElementById('logArea');
     if (log) {
         const p = document.createElement('div');
+        if (style) {
+            p.style.cssText = style;
+        }
         p.textContent = msg;
         log.appendChild(p);
         log.scrollTop = log.scrollHeight;
@@ -446,11 +449,8 @@ function renderSavingThrows() {
         container.appendChild(div);
         
         div.querySelector('.save-roll').onclick = () => {
-            let die = Math.floor(Math.random() * 20) + 1;
-            let total = die + bonus;
-            showRollResultModal(`Спасбросок ${saveNames[attr].trim()}`, total, die, bonus, "1к20");
-            addToLog(` Спасбросок: 1d20${bonus >= 0 ? '+' : ''}${bonus}=${total}`);
-        };
+    rollD20(bonus, `Спасбросок ${saveNames[attr].trim()}`, addToLog);
+};
     });
 }
 
@@ -520,16 +520,13 @@ function renderSkills() {
         };
     });
     
-    document.querySelectorAll('.skill-roll').forEach(btn => {
-        btn.onclick = () => {
-            let bonus = parseInt(btn.dataset.bonus);
-            let skillName = btn.parentElement.querySelector('.skill-name').innerText.trim();
-            let die = Math.floor(Math.random() * 20) + 1;
-            let total = die + bonus;
-            showRollResultModal(skillName, total, die, bonus, "1к20");
-            addToLog(`🎲 Навык: 1d20${bonus >= 0 ? '+' : ''}${bonus}=${total}`);
-        };
-    });
+document.querySelectorAll('.skill-roll').forEach(btn => {
+    btn.onclick = () => {
+        let bonus = parseInt(btn.dataset.bonus);
+        let skillName = btn.parentElement.querySelector('.skill-name').innerText.trim();
+        rollD20(bonus, skillName, addToLog);
+    };
+});
 }
 
 // ============ АТАКИ ============
@@ -546,20 +543,17 @@ function renderAttacks() {
         container.appendChild(li);
     });
     
-    document.querySelectorAll('.attack-roll').forEach(btn => {
-        btn.onclick = () => {
-            let idx = parseInt(btn.dataset.idx);
-            let a = state.attacks[idx];
-            if (!a) return;
-            let attrMod = getMod(a.attr);
-            let prof = a.proficient ? getProfBonus() : 0;
-            let attackBonus = attrMod + prof;
-            let die = Math.floor(Math.random() * 20) + 1;
-            let total = die + attackBonus;
-            showRollResultModal(`Атака: ${a.name}`, total, die, attackBonus, "1к20");
-            addToLog(`🎲 Атака "${a.name}": 1d20${attackBonus >= 0 ? '+' : ''}${attackBonus}=${total}`);
-        };
-    });
+document.querySelectorAll('.attack-roll').forEach(btn => {
+    btn.onclick = () => {
+        let idx = parseInt(btn.dataset.idx);
+        let a = state.attacks[idx];
+        if (!a) return;
+        let attrMod = getMod(a.attr);
+        let prof = a.proficient ? getProfBonus() : 0;
+        let attackBonus = attrMod + prof;
+        rollD20(attackBonus, `Атака: ${a.name}`, addToLog);
+    };
+});
     
     // === ИСПРАВЛЕННАЯ КНОПКА УРОНА (только урон, без проверки попадания) ===
     document.querySelectorAll('.attack-damage').forEach(btn => {
@@ -617,16 +611,14 @@ function renderSlots() {
 
 async function castSpell(spell) {
     return new Promise((resolve) => {
+        let spellAttr = spell.attr || 'wis';
+        let attrMod = getMod(spellAttr);
+        let profBonusVal = spell.proficient ? getProfBonus() : 0;
+        let attackBonus = attrMod + profBonusVal;
+        
         if (spell.level === 0) {
-            let spellAttr = spell.attr || 'wis';
-            let attrMod = getMod(spellAttr);
-            let profBonusVal = spell.proficient ? getProfBonus() : 0;
-            let attackBonus = attrMod + profBonusVal;
-            let die = Math.floor(Math.random() * 20) + 1;
-            let attackRoll = die + attackBonus;
-            
-            showRollResultModal(`Заговор: ${spell.name}`, attackRoll, die, attackBonus, "1к20");
-            addToLog(` Атака заклинанием-заговором ${spell.name}: 1d20${attackBonus >= 0 ? '+' : ''}${attackBonus}=${attackRoll}`);
+            // Заговор — используем rollD20
+            rollD20(attackBonus, `Заговор: ${spell.name}`, addToLog);
             
             if (spell.damage) rollDamage(spell.damage, addToLog, `Урон: ${spell.name}`);
             resolve(true);
@@ -692,16 +684,8 @@ async function castSpell(spell) {
                 addToLog(` Ячейка ${selectedLevel} уровня`);
             }
             
-            let spellAttr = spell.attr || 'wis';
-            let attrMod = getMod(spellAttr);
-            let profBonusVal = spell.proficient ? getProfBonus() : 0;
-            let attackBonus = attrMod + profBonusVal;
-            
-            let die = Math.floor(Math.random() * 20) + 1;
-            let attackRoll = die + attackBonus;
-            
-            showRollResultModal(`Заклинание: ${spell.name}`, attackRoll, die, attackBonus, "1к20");
-            addToLog(`🎲 Атака заклинанием ${spell.name}: 1d20${attackBonus >= 0 ? '+' : ''}${attackBonus}=${attackRoll}`);
+            // Бросок атаки заклинанием через rollD20
+            rollD20(attackBonus, `Заклинание: ${spell.name}`, addToLog);
             
             if (finalDamage) rollDamage(finalDamage, addToLog, `Урон: ${spell.name}`);
             

@@ -754,6 +754,16 @@ body.dark .skill-name.proficient {
     border-left-color: #f87171;
     background: rgba(248, 113, 113, 0.1);
 }
+/* Стили для критических бросков в логе */
+.log-area .crit-success {
+    color: #4ade80;
+    font-weight: bold;
+}
+
+.log-area .crit-fail {
+    color: #f87171;
+    font-weight: bold;
+}
 
 @keyframes slideIn {
     from { opacity: 0; transform: translateX(-10px); }

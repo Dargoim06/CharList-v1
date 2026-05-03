@@ -27,13 +27,13 @@
     </div>
 
     <div class="stat-row">
-    <div class="stat"><div class="stat-compact"><label>Сила (STR)</label><div><input class="stat-value" id="str" value="0"><span class="mod" id="strMod">-5</span></div></div></div>
-    <div class="stat"><div class="stat-compact"><label>Ловкость (DEX)</label><div><input class="stat-value" id="dex" value="0"><span class="mod" id="dexMod">-5</span></div></div></div>
-    <div class="stat"><div class="stat-compact"><label>Телосложение (CON)</label><div><input class="stat-value" id="con" value="0"><span class="mod" id="conMod">-5</span></div></div></div>
-    <div class="stat"><div class="stat-compact"><label>Интеллект (INT)</label><div><input class="stat-value" id="int" value="0"><span class="mod" id="intMod">-5</span></div></div></div>
-    <div class="stat"><div class="stat-compact"><label>Мудрость (WIS)</label><div><input class="stat-value" id="wis" value="0"><span class="mod" id="wisMod">-5</span></div></div></div>
-    <div class="stat"><div class="stat-compact"><label>Харизма (CHA)</label><div><input class="stat-value" id="cha" value="0"><span class="mod" id="chaMod">-5</span></div></div></div>
-</div>
+        <div class="stat"><div class="stat-compact"><label>Сила (STR)</label><div><input class="stat-value" id="str" value="10"><span class="mod" id="strMod">+0</span></div></div></div>
+        <div class="stat"><div class="stat-compact"><label>Ловкость (DEX)</label><div><input class="stat-value" id="dex" value="10"><span class="mod" id="dexMod">+0</span></div></div></div>
+        <div class="stat"><div class="stat-compact"><label>Телосложение (CON)</label><div><input class="stat-value" id="con" value="10"><span class="mod" id="conMod">+0</span></div></div></div>
+        <div class="stat"><div class="stat-compact"><label>Интеллект (INT)</label><div><input class="stat-value" id="int" value="10"><span class="mod" id="intMod">+0</span></div></div></div>
+        <div class="stat"><div class="stat-compact"><label>Мудрость (WIS)</label><div><input class="stat-value" id="wis" value="10"><span class="mod" id="wisMod">+0</span></div></div></div>
+        <div class="stat"><div class="stat-compact"><label>Харизма (CHA)</label><div><input class="stat-value" id="cha" value="10"><span class="mod" id="chaMod">+0</span></div></div></div>
+    </div>
 
     <div class="grid-2col">
         <div>
@@ -41,7 +41,8 @@
                 <div class="card-header"><h3>🍃 Состояние</h3><span class="collapse-icon">▼</span></div>
                 <div class="card-content">
                     <div><strong>Хиты:</strong> <span id="currentHp">27</span> / <input type="number" id="maxHpInput" value="27" style="width:60px;" disabled> <label style="margin-left:5px;"><input type="checkbox" id="manualHpCheckbox"> ✏️ правка</label> <button id="hpHeal" class="dice">💚 лечение</button> <button id="hpDamage" class="dice">💔 урон</button></div>
-<div class="temp-hp-row"><strong>Временные хиты:</strong> <input type="number" id="tempHp" value="0" style="width:80px;"> <button id="tempHpSet" class="dice">➕ добавить</button> <button id="tempHpClear" class="dice">🗑 очистить</button></div>                    <div class="exhaustion-row"><strong>😫 Истощение:</strong> <input type="number" id="exhaustion" value="0" min="0" max="6" step="1" style="width:70px;"> <span id="exhaustionEffects" class="exhaustion-badge"></span></div>
+                    <div class="temp-hp-row"><strong>Временные хиты:</strong> <input type="number" id="tempHp" value="0" style="width:80px;"> <button id="tempHpSet" class="dice">➕ добавить</button> <button id="tempHpClear" class="dice">🗑 очистить</button></div>
+                    <div class="exhaustion-row"><strong>😫 Истощение:</strong> <input type="number" id="exhaustion" value="0" min="0" max="6" step="1" style="width:70px;"> <span id="exhaustionEffects" class="exhaustion-badge"></span></div>
                     <div class="inspiration-row"><strong>✨ Вдохновение:</strong> <input type="checkbox" id="inspiration"> <span>(преимущество на бросок)</span></div>
                     <div><strong>КД:</strong> <span id="acValue">16</span> <input type="number" id="acInput" value="16" style="width:55px;"> <button id="setAcBtn" class="dice">уст.</button></div>
                     <div><strong>Скорость:</strong> <span id="speedDisplay">35</span> фт <input type="number" id="baseSpeed" value="35" style="width:55px;"> | <strong>Инициатива:</strong> <input type="number" id="initBonus" value="0" style="width:45px;"><button id="initBtn" class="dice">🎲</button></div>
@@ -145,6 +146,7 @@
     </div>
     <footer>🔮 Полноценный веб-проект</footer>
 </div>
+
 <!-- Модальное окно выбора класса -->
 <div id="classSelectModal" class="modal-overlay" style="display: none;">
     <div class="modal-content" style="max-width: 400px;">
@@ -167,6 +169,8 @@
         <button id="confirmClassBtn" style="width: 100%; padding: 10px;">🎲 Начать приключение</button>
     </div>
 </div>
+
+<!-- Модальное окно для результатов бросков (ЕДИНСТВЕННОЕ) -->
 <div id="rollResultModal" class="roll-modal-overlay" style="display:none;">
     <div class="roll-modal-content">
         <div class="roll-badge">БРОСОК</div>
@@ -181,9 +185,6 @@
         <button class="roll-close-btn" onclick="closeRollModal()">×</button>
     </div>
 </div>
-<!-- в конце body перед закрывающим тегом -->
-<script src="js/utils.js"></script>
-<script src="js/app.js"></script>
 
 <!-- Кнопки бросков и истории -->
 <button id="openDiceRoller" class="dice-roller-btn">🎲 Бросить кубик</button>
@@ -228,21 +229,7 @@
     <div id="rollHistoryContent" style="padding-top: 10px;"></div>
 </div>
 
-<!-- Модальное окно для атак/спасбросков -->
-<div id="rollResultModal" class="roll-modal-overlay" style="display:none;">
-    <div class="roll-modal-content">
-        <div class="roll-badge">БРОСОК</div>
-        <div class="roll-title">СПАСБРОСОК</div>
-        <div class="roll-details">
-            <div class="roll-formula">
-                <span class="roll-main">(13) + 2</span>
-                <span class="roll-sub">(1к20) + 2</span>
-            </div>
-            <div class="roll-result">15</div>
-        </div>
-        <button class="roll-close-btn" onclick="closeRollModal()">×</button>
-    </div>
-</div>
-
+<script src="js/utils.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>
