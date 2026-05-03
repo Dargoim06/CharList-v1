@@ -652,10 +652,9 @@ function renderClassResource() {
         state.classResources.sorcerer.max = maxValue;
         state.classResources.sorcerer.current = currentValue;
     } else if (primaryClass === 'barbarian') {
-        // Расчёт количества яростей по уровню варвара
         const barbarianLevel = state.multClasses.find(c => c.className === 'barbarian')?.level || 0;
         if (barbarianLevel >= 20) {
-            maxValue = Infinity; // Неограниченно
+            maxValue = Infinity;
         } else if (barbarianLevel >= 17) {
             maxValue = 6;
         } else if (barbarianLevel >= 12) {
@@ -700,7 +699,9 @@ function renderClassResource() {
             } else if (primaryClass === 'cleric') {
                 state.classResources.cleric.current = Math.max(0, state.classResources.cleric.current - 1);
             } else if (primaryClass === 'barbarian') {
-                state.classResources.barbarian.current = Math.max(0, state.classResources.barbarian.current - 1);
+                if (state.classResources.barbarian.max !== Infinity) {
+                    state.classResources.barbarian.current = Math.max(0, state.classResources.barbarian.current - 1);
+                }
             }
             renderClassResource();
             addToLog(`✨ Использован ${resource.name} (${currentValue-1}/${maxValue})`);
