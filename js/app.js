@@ -1961,43 +1961,160 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+// Вызов импорта из файла (переиспользуем существующую логику)
+// Вызов импорта из файла (полная версия)
+// Вызов импорта из файла (полная версия с обходом блокировки)
+function triggerFileImport() {
+    // Создаём временную кнопку
+    const tempBtn = document.createElement('button');
+    tempBtn.style.display = 'none';
+    document.body.appendChild(tempBtn);
+    
+    // Создаём input
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json';
+    
+    input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            try {
+                const data = JSON.parse(ev.target.result);
+                
+                // Очищаем текущее состояние
+                localStorage.removeItem('dnd_master_sheet_full');
+                localStorage.removeItem('dnd_roll_history');
+                
+                // Загружаем импортированные данные
+                state.spells = data.spells || [];
+                state.spellSlots = data.spellSlots || [];
+                state.attacks = data.attacks || [];
+                state.inventoryItems = data.inventoryItems || [];
+                state.features = data.features || [];
+                state.customSkills = data.customSkills || [];
+                state.notes = data.notes || [];
+                state.multClasses = data.multClasses || [{ className: "fighter", level: 1, hitDice: 8 }];
+                state.skillExtraBonuses = data.skillExtraBonuses || {};
+                state.extraSaveBonuses = data.extraSaveBonuses || {};
+                state.currentHp = data.currentHp || 27;
+                state.maxHp = data.maxHp || 27;
+                state.deathSuccess = data.deathSuccess || 0;
+                state.deathFail = data.deathFail || 0;
+                state.tempHp = data.tempHp || 0;
+                state.profBonus = data.profBonus || 2;
+                state.charName = data.charName || "";
+                state.charRace = data.charRace || "";
+                state.hpHistory = data.hpHistory || [];
+                state.manualHpEnabled = data.manualHpEnabled || false;
+                state.primaryClass = data.primaryClass || (state.multClasses[0]?.className || "fighter");
+                
+                // Классовые ресурсы
+                if (data.classResources) {
+                    state.classResources = data.classResources;
+                }
+                
+                // Статы
+                if (data.stats) {
+                    state.stats = data.stats;
+                    document.getElementById('str').value = state.stats.str;
+                    document.getElementById('dex').value = state.stats.dex;
+                    document.getElementById('con').value = state.stats.con;
+                    document.getElementById('int').value = state.stats.int;
+                    document.getElementById('wis').value = state.stats.wis;
+                    document.getElementById('cha').value = state.stats.cha;
+                }
+                
+                // Деньги
+                if (data.money) {
+                    state.money = data.money;
+                    document.getElementById('pp').value = state.money.pp;
+                    document.getElementById('gp').value = state.money.gp;
+                    document.getElementById('sp').value = state.money.sp;
+                    document.getElementById('cp').value = state.money.cp;
+                }
+                
+                // Обновляем интерфейс
+                renderMulticlass();
+                renderSavingThrows();
+                renderSkills();
+                renderInventory();
+                renderSpells();
+                renderSlots();
+                renderAttacks();
+                renderFeatures();
+                renderNotes();
+                renderClassResource();
+                updateUI();
+                
+                // Сохраняем в localStorage
+                autoSave();
+                
+                addToLog(`📀 Импортирован персонаж ${state.charName || 'Безымянный'}`);
+                
+                // Удаляем временную кнопку
+                tempBtn.remove();
+            } catch (err) {
+                addToLog(`❌ Ошибка импорта: ${err.message}`);
+                tempBtn.remove();
+            }
+        };
+        reader.readAsText(file);
+    };
+    
+    // Добавляем input на кнопку и эмулируем клик
+    tempBtn.onclick = () => {
+        input.click();
+        tempBtn.remove();
+    };
+    tempBtn.click();
+}
 
 // ============ ЗАПУСК ============
 document.addEventListener('DOMContentLoaded', async () => {
-    // Показываем версию в интерфейсе
     const versionSpan = document.getElementById('appVersion');
     if (versionSpan) versionSpan.textContent = APP_VERSION;
     
     checkAndMigrateVersion();
     
-    let saved = localStorage.getItem('dnd_master_sheet_full');
-    let loadExisting = false;
+    const saved = localStorage.getItem('dnd_master_sheet_full');
+    let savedData = null;
+    let hasSavedData = false;
     
     if (saved) {
-        const data = JSON.parse(saved);
-        // Проверяем, что сохранение не пустое (есть имя или не стандартный класс)
-        const hasRealData = data.charName || 
-                           (data.primaryClass !== 'fighter') || 
-                           (data.multClasses[0]?.level > 1) ||
-                           (data.stats?.str !== 0 || data.stats?.dex !== 0);
-        
-        if (hasRealData) {
-            // Спрашиваем пользователя
-            loadExisting = confirm(`🔄 Найдено сохранение персонажа "${data.charName || 'Безымянный'}" (${classNames[data.primaryClass] || data.primaryClass}, уровень ${data.multClasses[0]?.level || 1}).\n\nЗагрузить его? Нажмите "ОК".\nСоздать нового? Нажмите "Отмена".`);
-        }
+        try {
+            savedData = JSON.parse(saved);
+            hasSavedData = savedData.charName || 
+                           (savedData.primaryClass !== 'fighter') || 
+                           (savedData.multClasses[0]?.level > 1);
+        } catch(e) {}
     }
     
-    if (loadExisting) {
-        loadData();
+    let action = '1';
+    let needImport = false;
+    
+    if (hasSavedData) {
+        action = prompt(
+            `🔄 Найдено сохранение персонажа "${savedData.charName || 'Безымянный'}" (${classNames[savedData.primaryClass] || savedData.primaryClass}, уровень ${savedData.multClasses[0]?.level || 1}).\n\n` +
+            `Введите номер действия:\n` +
+            `1 - Загрузить сохранение\n` +
+            `2 - Создать нового персонажа\n` +
+            `3 - Импортировать персонажа из JSON файла`
+        );
+        needImport = (action === '3');
     } else {
-        // Очищаем старое сохранение и создаём нового персонажа
-        if (saved) {
-            localStorage.removeItem('dnd_master_sheet_full');
-            localStorage.removeItem('dnd_roll_history');
-        }
-        await initNewCharacter();
+        action = prompt(
+            `🎭 Добро пожаловать в D&D 5e Character Sheet!\n\n` +
+            `Введите номер действия:\n` +
+            `1 - Создать нового персонажа\n` +
+            `2 - Импортировать персонажа из JSON файла`
+        );
+        needImport = (action === '2');
     }
-
+    
+    // Сначала рендерим базовый интерфейс
     updateSpeedDisplay();
     updateExhaustionEffects();
     updateMaxHp();
@@ -2015,6 +2132,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.body.classList.add('dark');
         const themeToggle = document.getElementById('themeToggle');
         if (themeToggle) themeToggle.innerHTML = '☀️ Светлая тема';
+    }
+
+    // Если выбран импорт
+    if (needImport) {
+        addToLog(`📀 Нажмите кнопку "📂 Загрузить" в блоке Журнал для импорта персонажа из JSON файла`);
+        alert('Для импорта персонажа нажмите кнопку "📂 Загрузить" в блоке "Журнал"');
+        // Не загружаем и не создаём персонажа
+        return;
+    }
+    
+    // Обработка остальных вариантов
+    if (hasSavedData && action === '1') {
+        loadData();
+    } 
+    else if ((hasSavedData && action === '2') || (!hasSavedData && action === '1')) {
+        if (hasSavedData) {
+            localStorage.removeItem('dnd_master_sheet_full');
+            localStorage.removeItem('dnd_roll_history');
+        }
+        await initNewCharacter();
+    }
+    else {
+        if (!hasSavedData) {
+            await initNewCharacter();
+        } else {
+            loadData();
+        }
     }
 
     addToLog("🌸 Лист персонажа загружен.");
