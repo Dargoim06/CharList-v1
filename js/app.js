@@ -28,14 +28,47 @@ const state = {
     // Классовые ресурсы
     // Классовые ресурсы
 classResources: {
+    barbarian: { name: "Ярость", current: 2, max: 2 },
+    bard: { name: "Вдохновение барда", current: 0, max: 0 },
+    cleric: { name: "Божественный канал", current: 1, max: 1 },
+    druid: { name: "Дикая форма", current: 0, max: 0 },
     fighter: { name: "Всплеск действий", current: 1, max: 1 },
     monk: { name: "Очки Ци", current: 0, max: 0 },
+    paladin: { name: "Божественная кара", current: 0, max: 0 },
+    ranger: { name: "Метка охотника", current: 0, max: 0 },
+    rogue: { name: "Скрытая атака", current: 0, max: 0 },
     sorcerer: { name: "Очки чародейства", current: 0, max: 0 },
-    cleric: { name: "Божественный канал", current: 1, max: 1 },
-    barbarian: { name: "Ярость", current: 2, max: 2 } // Варвар
+    warlock: { name: "Ячейки заклинаний", current: 0, max: 0 },
+    wizard: { name: "Восстановление заклинаний", current: 0, max: 0 }
 },
-activeClassResource: "fighter" // какой ресурс показывать (по основному классу)
 };
+// ============ ВЕРСИЯ ПРОЕКТА ============
+const APP_VERSION = "1.0.1"; // МАЖОР.МИНОР.ПАТЧ
+const STORAGE_VERSION_KEY = "dnd_sheet_version";
+const STORAGE_DATA_KEY = "dnd_master_sheet_full";
+// ============ УПРАВЛЕНИЕ ВЕРСИЯМИ ============
+function checkAndMigrateVersion() {
+    const savedVersion = localStorage.getItem(STORAGE_VERSION_KEY);
+    const currentVersion = APP_VERSION;
+    
+    if (!savedVersion) {
+        // Первый запуск — сохраняем текущую версию
+        localStorage.setItem(STORAGE_VERSION_KEY, currentVersion);
+        addToLog(`📌 Инициализирована версия ${currentVersion}`);
+        return;
+    }
+    
+    if (savedVersion !== currentVersion) {
+        addToLog(`📌 Обновление с версии ${savedVersion} до ${currentVersion}`);
+        
+        // TODO: Здесь будут миграции для разных версий
+        
+        localStorage.setItem(STORAGE_VERSION_KEY, currentVersion);
+        addToLog(`✅ Обновление завершено`);
+    } else {
+        addToLog(`📌 Текущая версия: ${currentVersion}`);
+    }
+}
 
 // Функция показа модального окна выбора класса
 function showClassSelectionModal() {
@@ -65,29 +98,33 @@ async function initNewCharacter() {
     let hitDice = getHitDiceByClass(selectedClass);
     state.multClasses = [{ className: selectedClass, level: 1, hitDice: hitDice }];
 
-    // ============ ИНИЦИАЛИЗАЦИЯ КЛАССОВОГО РЕСУРСА ============
- // Инициализация классового ресурса для нового персонажа
-if (selectedClass === 'cleric') {
-    state.classResources.cleric.current = 1;
-    state.classResources.cleric.max = 1;
-} else if (selectedClass === 'fighter') {
-    state.classResources.fighter.current = 1;
-    state.classResources.fighter.max = 1;
-} else if (selectedClass === 'barbarian') {
-    state.classResources.barbarian.current = 2;
-    state.classResources.barbarian.max = 2;
-} else if (selectedClass === 'monk') {
-    state.classResources.monk.current = 1;
-    state.classResources.monk.max = 1;
-} else if (selectedClass === 'sorcerer') {
-    state.classResources.sorcerer.current = 1;
-    state.classResources.sorcerer.max = 1;
-}
-state.manualHpEnabled = true;
-document.getElementById('manualHpCheckbox').checked = true;
-document.getElementById('maxHpInput').disabled = false;
-}
+    // ============ ИНИЦИАЛИЗАЦИЯ КЛАССОВОГО РЕСУРСА ДЛЯ ВСЕХ КЛАССОВ ============
+    // Сброс всех ресурсов
+    const defaultResources = {
+        barbarian: { current: 2, max: 2 },
+        bard: { current: 0, max: 0 },
+        cleric: { current: 1, max: 1 },
+        druid: { current: 0, max: 0 },
+        fighter: { current: 1, max: 1 },
+        monk: { current: 0, max: 0 },
+        paladin: { current: 0, max: 0 },
+        ranger: { current: 0, max: 0 },
+        rogue: { current: 0, max: 0 },
+        sorcerer: { current: 0, max: 0 },
+        warlock: { current: 0, max: 0 },
+        wizard: { current: 0, max: 0 }
+    };
+    
+    // Устанавливаем начальные значения для выбранного класса
+    if (defaultResources[selectedClass]) {
+        state.classResources[selectedClass].current = defaultResources[selectedClass].current;
+        state.classResources[selectedClass].max = defaultResources[selectedClass].max;
+    }
     // ============ КОНЕЦ ИНИЦИАЛИЗАЦИИ ============
+
+    state.manualHpEnabled = true;
+    document.getElementById('manualHpCheckbox').checked = true;
+    document.getElementById('maxHpInput').disabled = false;
 
     function getHitDiceByClass(className) {
         const hitDiceMap = {
@@ -111,10 +148,11 @@ document.getElementById('maxHpInput').disabled = false;
     autoSave();
     const maxHpInput = document.getElementById('maxHpInput');
     if (maxHpInput) maxHpInput.value = state.maxHp;
-}
+} // <-- ЗАКРЫВАЮЩАЯ СКОБКА В КОНЦЕ!
 
 function autoSave() {
     const saveData = {
+        version: APP_VERSION,  // <-- ДОБАВИТЬ ЭТУ СТРОКУ
         primaryClass: state.primaryClass,
         spells: state.spells,
         spellSlots: state.spellSlots,
@@ -166,7 +204,15 @@ function loadData() {
             state.charRace = d.charRace || "";
             state.hpHistory = d.hpHistory || [];
             state.manualHpEnabled = d.manualHpEnabled || false;
-            state.primaryClass = d.primaryClass || (state.multClasses[0]?.className || "fighter");
+            
+            // ============ ПРАВИЛЬНАЯ ЗАГРУЗКА PRIMARY CLASS ============
+            // Загружаем primaryClass из сохранения, без подстановки "fighter" по умолчанию
+            if (d.primaryClass) {
+                state.primaryClass = d.primaryClass;
+            } else if (state.multClasses.length > 0) {
+                state.primaryClass = state.multClasses[0].className;
+            }
+            // ============================================================
             
             // Загрузка классовых ресурсов
             if (d.classResources) {
@@ -224,15 +270,11 @@ function loadData() {
             renderClassResource();
             updateUI();
             
-            if (!state.primaryClass && state.multClasses.length > 0) {
-                state.primaryClass = state.multClasses[0].className;
-            }
             renderSavingThrows();
             addToLog(`📀 Загружено сохранение`);
         } catch (e) { console.error(e); }
     }
 }
-
 function addToLog(msg, style) {
     const log = document.getElementById('logArea');
     if (log) {
@@ -413,30 +455,38 @@ function renderMulticlass() {
         div.innerHTML = `${selectHtml} <span>Уровень: <input type="number" class="class-level" data-idx="${idx}" value="${cls.level}" min="1" style="width:60px;"></span> <span>Кость хитов: <select class="class-hd" data-idx="${idx}" style="width:70px;"> <option value="6" ${cls.hitDice === 6 ? 'selected' : ''}>к6</option> <option value="8" ${cls.hitDice === 8 ? 'selected' : ''}>к8</option> <option value="10" ${cls.hitDice === 10 ? 'selected' : ''}>к10</option> <option value="12" ${cls.hitDice === 12 ? 'selected' : ''}>к12</option> </select></span> <button class="remove-class-btn" data-idx="${idx}">🗑</button>`;
         container.appendChild(div);
     });
+    
     document.querySelectorAll('.class-select').forEach(sel => {
         sel.onchange = () => {
             let idx = parseInt(sel.dataset.idx);
             state.multClasses[idx].className = sel.value;
+            
+            // Если меняем первый класс (основной) — обновляем primaryClass
+            if (idx === 0) {
+                state.primaryClass = sel.value;
+            }
+            
             renderMulticlass();
             recalcTotalLevel();
             updateMaxHp();
             renderSavingThrows();
+            renderClassResource();
             autoSave();
         };
     });
     document.querySelectorAll('.class-level').forEach(inp => {
-        inp.onchange = () => {
-            let idx = parseInt(inp.dataset.idx);
-            let newLevel = Math.max(1, parseInt(inp.value) || 1);
-            if (newLevel !== state.multClasses[idx].level) {
-                state.multClasses[idx].level = newLevel;
-                recalcTotalLevel();
-                renderMulticlass();
-                renderSavingThrows();
-                autoSave();
-            }
-        };
-    });
+    inp.onchange = () => {
+        let idx = parseInt(inp.dataset.idx);
+        let newLevel = Math.max(1, parseInt(inp.value) || 1);
+        if (newLevel !== state.multClasses[idx].level) {
+            state.multClasses[idx].level = newLevel;
+            recalcTotalLevel();
+            renderMulticlass();  // <-- ВАЖНО: перерендер для обновления
+            renderSavingThrows();
+            autoSave();
+        }
+    };
+});
     document.querySelectorAll('.class-hd').forEach(sel => {
         sel.onchange = () => {
             let idx = parseInt(sel.dataset.idx);
@@ -726,10 +776,99 @@ function renderClassResource() {
         state.classResources.fighter.max = maxValue;
         state.classResources.fighter.current = currentValue;
     }
+    else if (primaryClass === 'paladin') {
+        const paladinLevel = state.multClasses.find(c => c.className === 'paladin')?.level || 0;
+        if (paladinLevel >= 18) {
+            maxValue = Infinity;
+        } else if (paladinLevel >= 6) {
+            maxValue = 2;
+        } else if (paladinLevel >= 2) {
+            maxValue = 1;
+        } else {
+            maxValue = 0;
+        }
+        currentValue = maxValue === Infinity ? Infinity : Math.min(resource.current, maxValue);
+        state.classResources.paladin.max = maxValue;
+        state.classResources.paladin.current = currentValue;
+    }
+    else if (primaryClass === 'druid') {
+        const druidLevel = state.multClasses.find(c => c.className === 'druid')?.level || 0;
+        if (druidLevel >= 20) {
+            maxValue = Infinity;
+        } else if (druidLevel >= 18) {
+            maxValue = Infinity;
+        } else if (druidLevel >= 2) {
+            maxValue = 2;
+        } else {
+            maxValue = 0;
+        }
+        currentValue = maxValue === Infinity ? Infinity : Math.min(resource.current, maxValue);
+        state.classResources.druid.max = maxValue;
+        state.classResources.druid.current = currentValue;
+    }
+    else if (primaryClass === 'bard') {
+        const bardLevel = state.multClasses.find(c => c.className === 'bard')?.level || 0;
+        if (bardLevel >= 5) {
+            maxValue = 3;
+        } else if (bardLevel >= 1) {
+            maxValue = 1;
+        } else {
+            maxValue = 0;
+        }
+        currentValue = Math.min(resource.current, maxValue);
+        state.classResources.bard.max = maxValue;
+        state.classResources.bard.current = currentValue;
+    }
+    else if (primaryClass === 'ranger') {
+        const rangerLevel = state.multClasses.find(c => c.className === 'ranger')?.level || 0;
+        if (rangerLevel >= 1) {
+            maxValue = 1;
+        } else {
+            maxValue = 0;
+        }
+        currentValue = Math.min(resource.current, maxValue);
+        state.classResources.ranger.max = maxValue;
+        state.classResources.ranger.current = currentValue;
+    }
+    else if (primaryClass === 'rogue') {
+        const rogueLevel = state.multClasses.find(c => c.className === 'rogue')?.level || 0;
+        if (rogueLevel >= 1) {
+            maxValue = 1;
+        } else {
+            maxValue = 0;
+        }
+        currentValue = Math.min(resource.current, maxValue);
+        state.classResources.rogue.max = maxValue;
+        state.classResources.rogue.current = currentValue;
+    }
+    else if (primaryClass === 'warlock') {
+        // Для варлока ресурс не используется (отдельные ячейки заклинаний)
+        maxValue = 0;
+        currentValue = 0;
+        container.innerHTML = '';
+        return;
+    }
+    else if (primaryClass === 'wizard') {
+        const wizardLevel = state.multClasses.find(c => c.className === 'wizard')?.level || 0;
+        if (wizardLevel >= 1) {
+            maxValue = 1;
+        } else {
+            maxValue = 0;
+        }
+        currentValue = Math.min(resource.current, maxValue);
+        state.classResources.wizard.max = maxValue;
+        state.classResources.wizard.current = currentValue;
+    }
     
-    // Отображение бесконечности для 20 уровня варвара
+    // Отображение бесконечности
     let maxDisplay = maxValue === Infinity ? "∞" : maxValue;
     let currentDisplay = maxValue === Infinity ? "∞" : currentValue;
+    
+    // Если ресурс недоступен (0/0) — не показываем
+    if (maxDisplay === 0 && currentDisplay === 0) {
+        container.innerHTML = '';
+        return;
+    }
     
     container.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center; margin: 10px 0; padding: 8px; background: var(--stat-bg); border-radius: 16px;">
@@ -759,6 +898,22 @@ function renderClassResource() {
                 if (state.classResources.barbarian.max !== Infinity) {
                     state.classResources.barbarian.current = Math.max(0, state.classResources.barbarian.current - 1);
                 }
+            } else if (primaryClass === 'paladin') {
+                if (state.classResources.paladin.max !== Infinity) {
+                    state.classResources.paladin.current = Math.max(0, state.classResources.paladin.current - 1);
+                }
+            } else if (primaryClass === 'druid') {
+                if (state.classResources.druid.max !== Infinity) {
+                    state.classResources.druid.current = Math.max(0, state.classResources.druid.current - 1);
+                }
+            } else if (primaryClass === 'bard') {
+                state.classResources.bard.current = Math.max(0, state.classResources.bard.current - 1);
+            } else if (primaryClass === 'ranger') {
+                state.classResources.ranger.current = Math.max(0, state.classResources.ranger.current - 1);
+            } else if (primaryClass === 'rogue') {
+                state.classResources.rogue.current = Math.max(0, state.classResources.rogue.current - 1);
+            } else if (primaryClass === 'wizard') {
+                state.classResources.wizard.current = Math.max(0, state.classResources.wizard.current - 1);
             }
             renderClassResource();
             addToLog(`✨ Использован ${resource.name} (${currentValue-1}/${maxValue})`);
@@ -784,6 +939,26 @@ function renderClassResource() {
             } else {
                 state.classResources.barbarian.current = state.classResources.barbarian.max;
             }
+        } else if (primaryClass === 'paladin') {
+            if (state.classResources.paladin.max === Infinity) {
+                state.classResources.paladin.current = Infinity;
+            } else {
+                state.classResources.paladin.current = state.classResources.paladin.max;
+            }
+        } else if (primaryClass === 'druid') {
+            if (state.classResources.druid.max === Infinity) {
+                state.classResources.druid.current = Infinity;
+            } else {
+                state.classResources.druid.current = state.classResources.druid.max;
+            }
+        } else if (primaryClass === 'bard') {
+            state.classResources.bard.current = state.classResources.bard.max;
+        } else if (primaryClass === 'ranger') {
+            state.classResources.ranger.current = state.classResources.ranger.max;
+        } else if (primaryClass === 'rogue') {
+            state.classResources.rogue.current = state.classResources.rogue.max;
+        } else if (primaryClass === 'wizard') {
+            state.classResources.wizard.current = state.classResources.wizard.max;
         }
         renderClassResource();
         addToLog(`🔄 Восстановлены ${resource.name}`);
@@ -1437,39 +1612,67 @@ function initEventHandlers() {
         if (log) log.innerHTML = "🧹 Лог очищен. ";
     });
 
-    document.getElementById('saveToFileBtn')?.addEventListener('click', () => {
-        let saveData = {
-            primaryClass: state.primaryClass,
-            spells: state.spells,
-            spellSlots: state.spellSlots,
-            attacks: state.attacks,
-            inventoryItems: state.inventoryItems,
-            features: state.features,
-            customSkills: state.customSkills,
-            notes: state.notes,
-            multClasses: state.multClasses,
-            skillExtraBonuses: state.skillExtraBonuses,
-            extraSaveBonuses: state.extraSaveBonuses,
-            currentHp: state.currentHp,
-            maxHp: state.maxHp,
-            deathSuccess: state.deathSuccess,
-            deathFail: state.deathFail,
-            tempHp: state.tempHp,
-            profBonus: state.profBonus,
-            stats: state.stats,
-            charName: state.charName,
-            charRace: state.charRace,
-            hpHistory: state.hpHistory,
-            manualHpEnabled: state.manualHpEnabled,
-            classResources: state.classResources
-        };
-        let blob = new Blob([JSON.stringify(saveData, null, 2)], { type: "application/json" });
-        let a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `character_save.json`;
-        a.click();
-        addToLog(` Сохранено в файл`);
-    });
+document.getElementById('saveToFileBtn')?.addEventListener('click', async () => {
+    const saveData = {
+        version: APP_VERSION,
+        primaryClass: state.primaryClass,
+        spells: state.spells,
+        spellSlots: state.spellSlots,
+        attacks: state.attacks,
+        inventoryItems: state.inventoryItems,
+        features: state.features,
+        customSkills: state.customSkills,
+        notes: state.notes,
+        multClasses: state.multClasses,
+        skillExtraBonuses: state.skillExtraBonuses,
+        extraSaveBonuses: state.extraSaveBonuses,
+        currentHp: state.currentHp,
+        maxHp: state.maxHp,
+        deathSuccess: state.deathSuccess,
+        deathFail: state.deathFail,
+        tempHp: state.tempHp,
+        profBonus: state.profBonus,
+        stats: state.stats,
+        charName: state.charName,
+        charRace: state.charRace,
+        hpHistory: state.hpHistory,
+        manualHpEnabled: state.manualHpEnabled,
+        classResources: state.classResources
+    };
+    
+    const jsonStr = JSON.stringify(saveData, null, 2);
+    const blob = new Blob([jsonStr], { type: "application/json" });
+    
+    // Современный способ (работает без сервера)
+    if (window.showSaveFilePicker) {
+        try {
+            const handle = await window.showSaveFilePicker({
+                suggestedName: `character_${state.charName || 'unnamed'}.json`,
+                types: [{
+                    description: 'JSON файл',
+                    accept: { 'application/json': ['.json'] }
+                }]
+            });
+            const writable = await handle.createWritable();
+            await writable.write(blob);
+            await writable.close();
+            addToLog(`💾 Сохранено в файл`);
+            return;
+        } catch (err) {
+            if (err.name !== 'AbortError') {
+                console.error(err);
+            }
+        }
+    }
+    
+    // Fallback для старых браузеров
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `character_${state.charName || 'unnamed'}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    addToLog(`💾 Сохранено в файл`);
+});
 
     document.getElementById('loadFromFileBtn')?.addEventListener('click', () => {
         let inp = document.createElement('input');
@@ -1761,10 +1964,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ============ ЗАПУСК ============
 document.addEventListener('DOMContentLoaded', async () => {
+    // Показываем версию в интерфейсе
+    const versionSpan = document.getElementById('appVersion');
+    if (versionSpan) versionSpan.textContent = APP_VERSION;
+    
+    checkAndMigrateVersion();
+    
     let saved = localStorage.getItem('dnd_master_sheet_full');
+    let loadExisting = false;
+    
     if (saved) {
+        const data = JSON.parse(saved);
+        // Проверяем, что сохранение не пустое (есть имя или не стандартный класс)
+        const hasRealData = data.charName || 
+                           (data.primaryClass !== 'fighter') || 
+                           (data.multClasses[0]?.level > 1) ||
+                           (data.stats?.str !== 0 || data.stats?.dex !== 0);
+        
+        if (hasRealData) {
+            // Спрашиваем пользователя
+            loadExisting = confirm(`🔄 Найдено сохранение персонажа "${data.charName || 'Безымянный'}" (${classNames[data.primaryClass] || data.primaryClass}, уровень ${data.multClasses[0]?.level || 1}).\n\nЗагрузить его? Нажмите "ОК".\nСоздать нового? Нажмите "Отмена".`);
+        }
+    }
+    
+    if (loadExisting) {
         loadData();
     } else {
+        // Очищаем старое сохранение и создаём нового персонажа
+        if (saved) {
+            localStorage.removeItem('dnd_master_sheet_full');
+            localStorage.removeItem('dnd_roll_history');
+        }
         await initNewCharacter();
     }
 
