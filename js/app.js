@@ -65,6 +65,26 @@ async function initNewCharacter() {
     let hitDice = getHitDiceByClass(selectedClass);
     state.multClasses = [{ className: selectedClass, level: 1, hitDice: hitDice }];
 
+    // ============ ИНИЦИАЛИЗАЦИЯ КЛАССОВОГО РЕСУРСА ============
+ // Инициализация классового ресурса для нового персонажа
+if (selectedClass === 'cleric') {
+    state.classResources.cleric.current = 1;
+    state.classResources.cleric.max = 1;
+} else if (selectedClass === 'fighter') {
+    state.classResources.fighter.current = 1;
+    state.classResources.fighter.max = 1;
+} else if (selectedClass === 'barbarian') {
+    state.classResources.barbarian.current = 2;
+    state.classResources.barbarian.max = 2;
+} else if (selectedClass === 'monk') {
+    state.classResources.monk.current = 1;
+    state.classResources.monk.max = 1;
+} else if (selectedClass === 'sorcerer') {
+    state.classResources.sorcerer.current = 1;
+    state.classResources.sorcerer.max = 1;
+}
+    // ============ КОНЕЦ ИНИЦИАЛИЗАЦИИ ============
+
     function getHitDiceByClass(className) {
         const hitDiceMap = {
             barbarian: 12, fighter: 10, paladin: 10, ranger: 10,
@@ -81,6 +101,7 @@ async function initNewCharacter() {
 
     renderMulticlass();
     renderSavingThrows();
+    renderClassResource();
     updateUI();
     addToLog(`🎉 Создан персонаж класса ${classNames[selectedClass]}`);
     autoSave();
@@ -635,7 +656,7 @@ function renderClassResource() {
         return;
     }
     
-    // Для монаха и чародея max = уровень класса
+    // Для каждого класса свой расчёт максимума
     let maxValue = resource.max;
     let currentValue = resource.current;
     
@@ -645,13 +666,15 @@ function renderClassResource() {
         currentValue = Math.min(resource.current, maxValue);
         state.classResources.monk.max = maxValue;
         state.classResources.monk.current = currentValue;
-    } else if (primaryClass === 'sorcerer') {
+    } 
+    else if (primaryClass === 'sorcerer') {
         const sorcererLevel = state.multClasses.find(c => c.className === 'sorcerer')?.level || 0;
         maxValue = sorcererLevel;
         currentValue = Math.min(resource.current, maxValue);
         state.classResources.sorcerer.max = maxValue;
         state.classResources.sorcerer.current = currentValue;
-    } else if (primaryClass === 'barbarian') {
+    } 
+    else if (primaryClass === 'barbarian') {
         const barbarianLevel = state.multClasses.find(c => c.className === 'barbarian')?.level || 0;
         if (barbarianLevel >= 20) {
             maxValue = Infinity;
@@ -670,6 +693,28 @@ function renderClassResource() {
         state.classResources.barbarian.max = maxValue;
         state.classResources.barbarian.current = currentValue;
     }
+    else if (primaryClass === 'cleric') {
+        const clericLevel = state.multClasses.find(c => c.className === 'cleric')?.level || 0;
+        if (clericLevel >= 6) {
+            maxValue = 2;
+        } else {
+            maxValue = 1;
+        }
+        currentValue = Math.min(resource.current, maxValue);
+        state.classResources.cleric.max = maxValue;
+        state.classResources.cleric.current = currentValue;
+    }
+    else if (primaryClass === 'fighter') {
+        const fighterLevel = state.multClasses.find(c => c.className === 'fighter')?.level || 0;
+        if (fighterLevel >= 17) {
+            maxValue = 2;
+        } else {
+            maxValue = 1;
+        }
+        currentValue = Math.min(resource.current, maxValue);
+        state.classResources.fighter.max = maxValue;
+        state.classResources.fighter.current = currentValue;
+    }
     
     // Отображение бесконечности для 20 уровня варвара
     let maxDisplay = maxValue === Infinity ? "∞" : maxValue;
@@ -684,6 +729,7 @@ function renderClassResource() {
         </div>
     `;
     
+    // Обработчик использования ресурса
     document.getElementById('useResourceBtn')?.addEventListener('click', () => {
         if (maxValue === Infinity) {
             addToLog(`✨ ${resource.name}: бесконечное использование!`);
@@ -711,6 +757,7 @@ function renderClassResource() {
         }
     });
     
+    // Обработчик восстановления ресурса
     document.getElementById('restoreResourceBtn')?.addEventListener('click', () => {
         if (primaryClass === 'monk') {
             state.classResources.monk.current = state.classResources.monk.max;
