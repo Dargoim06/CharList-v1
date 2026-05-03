@@ -24,7 +24,17 @@ const state = {
     charRace: "",
     stats: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
     money: { pp: 0, gp: 0, sp: 0, cp: 0 },
-    rollHistory: []
+    rollHistory: [],
+    // Классовые ресурсы
+    // Классовые ресурсы
+classResources: {
+    fighter: { name: "Всплеск действий", current: 1, max: 1 },
+    monk: { name: "Очки Ци", current: 0, max: 0 },
+    sorcerer: { name: "Очки чародейства", current: 0, max: 0 },
+    cleric: { name: "Божественный канал", current: 1, max: 1 },
+    barbarian: { name: "Ярость", current: 2, max: 2 } // Варвар
+},
+activeClassResource: "fighter" // какой ресурс показывать (по основному классу)
 };
 
 // Функция показа модального окна выбора класса
@@ -100,7 +110,8 @@ function autoSave() {
         charName: state.charName,
         charRace: state.charRace,
         stats: state.stats,
-        money: state.money
+        money: state.money,
+        classResources: state.classResources
     };
     localStorage.setItem('dnd_master_sheet_full', JSON.stringify(saveData));
 }
@@ -131,6 +142,11 @@ function loadData() {
             state.hpHistory = d.hpHistory || [];
             state.manualHpEnabled = d.manualHpEnabled || false;
             state.primaryClass = d.primaryClass || (state.multClasses[0]?.className || "fighter");
+            
+            // Загрузка классовых ресурсов
+            if (d.classResources) {
+                state.classResources = d.classResources;
+            }
             
             if (d.stats) {
                 state.stats = d.stats;
@@ -174,6 +190,7 @@ function loadData() {
             renderAttacks();
             renderFeatures();
             renderNotes();
+            renderClassResource(); // Добавлен рендер классовых ресурсов
             updateUI();
             
             if (!state.primaryClass && state.multClasses.length > 0) {
@@ -605,6 +622,115 @@ function restoreAllSlots() {
     autoSave();
 }
 
+function renderClassResource() {
+    const container = document.getElementById('classResourceContainer');
+    if (!container) return;
+    
+    // Определяем основной класс персонажа
+    const primaryClass = state.primaryClass;
+    const resource = state.classResources[primaryClass];
+    
+    if (!resource) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    // Для монаха и чародея max = уровень класса
+    let maxValue = resource.max;
+    let currentValue = resource.current;
+    
+    if (primaryClass === 'monk') {
+        const monkLevel = state.multClasses.find(c => c.className === 'monk')?.level || 0;
+        maxValue = monkLevel;
+        currentValue = Math.min(resource.current, maxValue);
+        state.classResources.monk.max = maxValue;
+        state.classResources.monk.current = currentValue;
+    } else if (primaryClass === 'sorcerer') {
+        const sorcererLevel = state.multClasses.find(c => c.className === 'sorcerer')?.level || 0;
+        maxValue = sorcererLevel;
+        currentValue = Math.min(resource.current, maxValue);
+        state.classResources.sorcerer.max = maxValue;
+        state.classResources.sorcerer.current = currentValue;
+    } else if (primaryClass === 'barbarian') {
+        // Расчёт количества яростей по уровню варвара
+        const barbarianLevel = state.multClasses.find(c => c.className === 'barbarian')?.level || 0;
+        if (barbarianLevel >= 20) {
+            maxValue = Infinity; // Неограниченно
+        } else if (barbarianLevel >= 17) {
+            maxValue = 6;
+        } else if (barbarianLevel >= 12) {
+            maxValue = 5;
+        } else if (barbarianLevel >= 6) {
+            maxValue = 4;
+        } else if (barbarianLevel >= 3) {
+            maxValue = 3;
+        } else {
+            maxValue = 2;
+        }
+        currentValue = Math.min(resource.current, maxValue);
+        state.classResources.barbarian.max = maxValue;
+        state.classResources.barbarian.current = currentValue;
+    }
+    
+    // Отображение бесконечности для 20 уровня варвара
+    let maxDisplay = maxValue === Infinity ? "∞" : maxValue;
+    let currentDisplay = maxValue === Infinity ? "∞" : currentValue;
+    
+    container.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin: 10px 0; padding: 8px; background: var(--stat-bg); border-radius: 16px;">
+            <strong>⭐ ${resource.name}:</strong>
+            <span>${currentDisplay}/${maxDisplay}</span>
+            <button id="useResourceBtn" class="dice" style="background: #8b5cf6;">⚡ Использовать</button>
+            <button id="restoreResourceBtn" class="dice" style="background: #2c6e2c;">🔄 Восстановить</button>
+        </div>
+    `;
+    
+    document.getElementById('useResourceBtn')?.addEventListener('click', () => {
+        if (maxValue === Infinity) {
+            addToLog(`✨ ${resource.name}: бесконечное использование!`);
+            return;
+        }
+        if (currentValue > 0) {
+            if (primaryClass === 'monk') {
+                state.classResources.monk.current--;
+            } else if (primaryClass === 'sorcerer') {
+                state.classResources.sorcerer.current--;
+            } else if (primaryClass === 'fighter') {
+                state.classResources.fighter.current = Math.max(0, state.classResources.fighter.current - 1);
+            } else if (primaryClass === 'cleric') {
+                state.classResources.cleric.current = Math.max(0, state.classResources.cleric.current - 1);
+            } else if (primaryClass === 'barbarian') {
+                state.classResources.barbarian.current = Math.max(0, state.classResources.barbarian.current - 1);
+            }
+            renderClassResource();
+            addToLog(`✨ Использован ${resource.name} (${currentValue-1}/${maxValue})`);
+            autoSave();
+        } else {
+            addToLog(`❌ Нет доступных ${resource.name}!`);
+        }
+    });
+    
+    document.getElementById('restoreResourceBtn')?.addEventListener('click', () => {
+        if (primaryClass === 'monk') {
+            state.classResources.monk.current = state.classResources.monk.max;
+        } else if (primaryClass === 'sorcerer') {
+            state.classResources.sorcerer.current = state.classResources.sorcerer.max;
+        } else if (primaryClass === 'fighter') {
+            state.classResources.fighter.current = state.classResources.fighter.max;
+        } else if (primaryClass === 'cleric') {
+            state.classResources.cleric.current = state.classResources.cleric.max;
+        } else if (primaryClass === 'barbarian') {
+            if (state.classResources.barbarian.max === Infinity) {
+                state.classResources.barbarian.current = Infinity;
+            } else {
+                state.classResources.barbarian.current = state.classResources.barbarian.max;
+            }
+        }
+        renderClassResource();
+        addToLog(`🔄 Восстановлены ${resource.name}`);
+        autoSave();
+    });
+}
 async function castSpell(spell) {
     return new Promise((resolve) => {
         let spellAttr = spell.attr || 'wis';
@@ -1275,7 +1401,8 @@ function initEventHandlers() {
             charName: state.charName,
             charRace: state.charRace,
             hpHistory: state.hpHistory,
-            manualHpEnabled: state.manualHpEnabled
+            manualHpEnabled: state.manualHpEnabled,
+            classResources: state.classResources
         };
         let blob = new Blob([JSON.stringify(saveData, null, 2)], { type: "application/json" });
         let a = document.createElement('a');
