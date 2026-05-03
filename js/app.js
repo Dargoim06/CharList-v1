@@ -561,27 +561,16 @@ function renderAttacks() {
         };
     });
     
+    // === ИСПРАВЛЕННАЯ КНОПКА УРОНА (только урон, без проверки попадания) ===
     document.querySelectorAll('.attack-damage').forEach(btn => {
         btn.onclick = () => {
             let idx = parseInt(btn.dataset.idx);
             let a = state.attacks[idx];
             if (!a) return;
-            let attrMod = getMod(a.attr);
-            let prof = a.proficient ? getProfBonus() : 0;
-            let attackBonus = attrMod + prof;
-            let die = Math.floor(Math.random() * 20) + 1;
-            let attackRoll = die + attackBonus;
-            
-            showRollResultModal(`Атака: ${a.name}`, attackRoll, die, attackBonus, "1к20");
-            addToLog(`🎲 Атака "${a.name}": 1d20${attackBonus >= 0 ? '+' : ''}${attackBonus}=${attackRoll}`);
-            
-            if (confirm(`Атака: ${attackRoll}. Нанести урон?`)) {
-                rollDamage(a.dice, addToLog, `Урон: ${a.name}`);
-            } else {
-                addToLog(` Урон не нанесён.`);
-            }
+            rollDamage(a.dice, addToLog, `Урон: ${a.name}`);
         };
     });
+    // === КОНЕЦ ИСПРАВЛЕНИЯ ===
     
     document.querySelectorAll('.remove-attack').forEach(btn => {
         btn.onclick = () => {
@@ -592,7 +581,6 @@ function renderAttacks() {
         };
     });
 }
-
 // ============ ЗАКЛИНАНИЯ ============
 function renderSlots() {
     let container = document.getElementById('slotsList');
